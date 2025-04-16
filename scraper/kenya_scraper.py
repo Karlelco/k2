@@ -1,21 +1,8 @@
-import asyncio
-import os
-import re
-import json
-import time
-import traceback
-from datetime import datetime
-from playwright.async_api import async_playwright
-import psycopg2
-from psycopg2.extras import execute_values
-import requests
-from logger import  setup_logger  
 
-# Set up logger
-logger = setup_logger("kenya_scraper", "logs/kenya_scraper.log")
 
-# Database connection string from environment variable
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# Load .env file (make sure DATABASE_URL is set)
+load_dotenv()
+DATABASE_URL = os.getenv('DATABASE_URL')
 
 # Monitoring configuration
 MONITORING_WEBHOOK_URL = os.environ.get("MONITORING_WEBHOOK_URL")  # For Slack, Discord, etc.
@@ -91,7 +78,23 @@ async def scrape_kenya_data():
             
             # Dictionary to store all scraped data
             kenya_data = {
-                "country": {},
+                "country": {
+                    "name": "Kenya",
+                    "id": 1, # Add id field
+                    "official_name": None,
+                    "capital": None,
+                    "largest_city": None,
+                    "area_total": None,
+                    "area_unit": None,
+                    "population": None,
+                    "population_year": None,
+                    "currency": None,
+                    "motto": None,
+                    "anthem": None, 
+                    "official_languages": None,
+                    "introduction": None,
+                    "last_updated": None # Add last_updated field
+                },
                 "cities": [],
                 "borders": [],
                 "geography": [],
@@ -105,7 +108,16 @@ async def scrape_kenya_data():
             # Scrape general information about Kenya from Wikipedia
             logger.info("Scraping Wikipedia for general information...")
             try:
-                await page.goto('https://en.wikipedia.org/wiki/Kenya', {'timeout': 60000})
+                await page.goto('https://en.wikipedia.org/wiki/Kenya')
+                # get the html content as saved in the file
+                # with open('kenya.html', 'r', encoding='utf-8') as f:
+
+                content = await page.content()
+                # Save the content to a file for debugging
+                with open('kenya.html', 'w', encoding='utf-8') as f:
+                    f.write(content)
+
+
                 update_metric("pages_scraped", scraper_metrics["pages_scraped"] + 1)
                 
                 # Add random delay to avoid detection
@@ -238,8 +250,17 @@ def store_in_database(data):
     cursor = None
     try:
         # Connect to the database
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(
+           host='ep-weathered-union-a27wempw-pooler.eu-central-1.aws.neon.tech',
+           database='neondb',
+           user='neondb_owner',
+           password='npg_onF2DAdpLm1C'
+        )
+        if conn:
+            logger.info("Connection created successfully")
+
         cursor = conn.cursor()
+
         
         # Insert country data
         country = data["country"]
@@ -264,7 +285,8 @@ def store_in_database(data):
                 introduction = EXCLUDED.introduction,
                 last_updated = CURRENT_TIMESTAMP
             RETURNING id
-        """, (
+        """, 
+        (
             country["name"],
             country["official_name"],
             country["capital"],
@@ -337,7 +359,7 @@ def save_metrics():
 if __name__ == "__main__":
     try:
         asyncio.run(scrape_kenya_data())
-        save_metrics()
+        # save_metrics()
     except Exception as e:
         logger.critical(f"Unhandled exception: {e}")
         logger.critical(traceback.format_exc())

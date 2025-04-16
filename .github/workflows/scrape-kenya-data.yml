@@ -23,15 +23,26 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install playwright psycopg2-binary
+          pip install playwright psycopg2-binary requests
           python -m playwright install --with-deps chromium
       
-      - name: Run scraper
+      - name: Run scraper with monitoring
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          MONITORING_WEBHOOK_URL: ${{ secrets.MONITORING_WEBHOOK_URL }}
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
         run: |
           cd scraper
-          python kenya_scraper.py
+          python kenya_scraper_monitored.py
+      
+      - name: Upload logs as artifacts
+        if: always()  # Run even if the scraper fails
+        uses: actions/upload-artifact@v3
+        with:
+          name: scraper-logs
+          path: |
+            scraper/logs/
+            scraper/kenya_data_full.json
       
       - name: Check for changes
         id: check_changes

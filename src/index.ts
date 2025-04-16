@@ -3,6 +3,12 @@ import { cors } from "hono/cors"
 import { cache } from "hono/cache"
 import { logger } from "hono/logger"
 import { prettyJSON } from "hono/pretty-json"
+import { 
+  monitoringMiddleware, 
+  healthCheckHandler, 
+  metricsHandler 
+} from "../middleware"
+
 import {
   getCountry,
   getCities,
@@ -16,12 +22,17 @@ import {
 } from "./lib/db"
 
 // Create the Hono app
-const app = new Hono<{ Bindings: { [key: string]: string } }>()
+const app = new Hono()
 
 // Add middleware
 app.use("*", logger())
 app.use("*", prettyJSON())
 app.use("*", cors())
+app.use("*", monitoringMiddleware)  // Add monitoring middleware
+
+// Add monitoring endpoints
+app.get("/health", healthCheckHandler)
+app.get("/metrics", metricsHandler)
 
 // Add cache middleware for GET requests (1 hour)
 app.use(
@@ -141,7 +152,7 @@ app.get("/", (c) => {
 })
 
 // Helper function to get country ID
-async function getKenyaId(c) {
+async function getKenyaId(c: any) {
   const country = await getCountry("Kenya")
   if (!country) {
     return c.json({ error: "Country data not found" }, 404)
@@ -353,6 +364,15 @@ app.notFound((c) => {
     },
     404,
   )
+})
+
+app.onError((err, c) => {
+  console.error(`Error in ${c.req.method} ${c.req.path}:`, err)
+  
+  return c.json({
+    error: err.message || "Internal Server Error",
+    status: err instanceof Error ? 500 : 400,
+  }, err instanceof Error ? 500 : 400)
 })
 
 export default app

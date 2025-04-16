@@ -1,0 +1,27 @@
+{
+  "country": {
+    "name": "Kenya",
+    "id": 1,
+    "official_name": null,
+    "capital": null,
+    "largest_city": null,
+    "area_total": null,
+    "area_unit": null,
+    "population": null,
+    "population_year": null,
+    "currency": null,
+    "motto": null,
+    "anthem": null,
+    "official_languages": null,
+    "introduction": null,
+    "last_updated": null
+  },
+  "cities": [],
+  "borders": [],
+  "geography": [],
+  "climate": [],
+  "ethnic_groups": [],
+  "history": [],
+  "tourism": [],
+  "references": []
+}
